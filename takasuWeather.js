@@ -81,10 +81,9 @@ async function fetchAgroInfo() {
         const errorElement = document.querySelector('h2');
         errorElement.textContent = `ごめんなさい！ エラーが発生しました💦 エラーコード：${error.message}`;
         errorElement.style.color = '#CE579B';
-
     } finally {
-        // ポップアップ表示で「情報取得完了！」と表示
-        alert('情報取得完了！ エラーの場合は管理者に連絡してください🙇‍♀️');
+        // コンソールに情報取得完了を表示
+        console.log('情報取得完了！');
     }
 }
 
