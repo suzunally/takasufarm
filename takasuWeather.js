@@ -314,7 +314,10 @@ function showWeeklyForecast(forecastData) {
                     date: date,
                     temps: [],
                     weather: [],
-                    icon: forecast.weather?.[0]?.icon || ''
+                    icon: forecast.weather?.[0]?.icon || '',
+                    humidity: [],
+                    wind: [],
+                    pressure: []
                 };
             }
             
@@ -325,6 +328,21 @@ function showWeeklyForecast(forecastData) {
                 dailyForecasts[dateString].temps.push(parseFloat(celsiusTemp));
             } else {
                 console.warn('気温データがありません:', forecast);
+            }
+            
+            // 湿度データを追加
+            if (forecast.main && typeof forecast.main.humidity !== 'undefined') {
+                dailyForecasts[dateString].humidity.push(forecast.main.humidity);
+            }
+            
+            // 風速データを追加
+            if (forecast.wind && typeof forecast.wind.speed !== 'undefined') {
+                dailyForecasts[dateString].wind.push(forecast.wind.speed);
+            }
+            
+            // 気圧データを追加
+            if (forecast.main && typeof forecast.main.pressure !== 'undefined') {
+                dailyForecasts[dateString].pressure.push(forecast.main.pressure);
             }
             
             // 天気データを追加 - 英語から日本語に変換
@@ -420,6 +438,33 @@ function showWeeklyForecast(forecastData) {
             weatherDiv.textContent = mainWeather || '天気データなし';
             weatherDiv.style.marginTop = '5px';
             dayCard.appendChild(weatherDiv);
+            
+            // 湿度の表示（平均値）
+            if (dayData.humidity && dayData.humidity.length > 0) {
+                const avgHumidity = dayData.humidity.reduce((sum, val) => sum + val, 0) / dayData.humidity.length;
+                const humidityDiv = document.createElement('div');
+                humidityDiv.innerHTML = `<small>湿度: <span style="color: #4a86e8;">${Math.round(avgHumidity)}%</span></small>`;
+                humidityDiv.style.marginTop = '3px';
+                dayCard.appendChild(humidityDiv);
+            }
+            
+            // 風速の表示（平均値）
+            if (dayData.wind && dayData.wind.length > 0) {
+                const avgWind = dayData.wind.reduce((sum, val) => sum + val, 0) / dayData.wind.length;
+                const windDiv = document.createElement('div');
+                windDiv.innerHTML = `<small>風速: <span style="color: #6aa84f;">${avgWind.toFixed(1)}m/s</span></small>`;
+                windDiv.style.marginTop = '3px';
+                dayCard.appendChild(windDiv);
+            }
+            
+            // 気圧の表示（平均値）
+            if (dayData.pressure && dayData.pressure.length > 0) {
+                const avgPressure = dayData.pressure.reduce((sum, val) => sum + val, 0) / dayData.pressure.length;
+                const pressureDiv = document.createElement('div');
+                pressureDiv.innerHTML = `<small>気圧: <span style="color: #674ea7;">${Math.round(avgPressure)}hPa</span></small>`;
+                pressureDiv.style.marginTop = '3px';
+                dayCard.appendChild(pressureDiv);
+            }
             
             forecastContainer.appendChild(dayCard);
         } catch (err) {
