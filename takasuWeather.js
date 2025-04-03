@@ -351,6 +351,7 @@ function showAgroInfo(AgroInfomations) {
 function showWeeklyForecast(forecastData) {
     console.log('週間天気予報表示処理を開始します');
     const container = document.getElementById('takasuHatakeCondition');
+    const isSmallScreen = window.innerWidth < 768; // タブレットサイズ未満をスマホとみなす
     
     // 既存の週間予報セクションがあれば削除
     const existingForecast = document.querySelector('#weekly-forecast-section');
@@ -369,33 +370,15 @@ function showWeeklyForecast(forecastData) {
     weeklyTitle.style.color = '#2E7D32'; // 深い緑色
     weeklyTitle.style.borderBottom = '2px solid #4CAF50';
     weeklyTitle.style.paddingBottom = '10px';
-    weeklyTitle.style.fontSize = window.innerWidth < 600 ? '18px' : '20px';
+    weeklyTitle.style.fontSize = isSmallScreen ? '18px' : '20px';
     forecastSection.appendChild(weeklyTitle);
     
-    // スライドショーコンテナ
-    const slideShowContainer = document.createElement('div');
-    slideShowContainer.style.position = 'relative';
-    slideShowContainer.style.margin = '20px 0';
-    slideShowContainer.style.overflow = 'hidden';
-    slideShowContainer.style.borderRadius = '12px';
-    slideShowContainer.style.boxShadow = '0 6px 20px rgba(76, 175, 80, 0.15)';
-    
-    // スライドトラック - カードを横に並べるコンテナ
-    const slideTrack = document.createElement('div');
-    slideTrack.style.display = 'flex';
-    slideTrack.style.transition = 'transform 0.3s ease-in-out';
-    slideTrack.style.width = '100%';
-    slideShowContainer.appendChild(slideTrack);
-    
     // APIからの予報データを処理
-    // AgroMonitoring APIは配列として直接予報データを返す場合があります
     let forecastList = [];
     
     if (Array.isArray(forecastData)) {
-        // データが直接配列の場合
         forecastList = forecastData;
     } else if (forecastData.list && Array.isArray(forecastData.list)) {
-        // データがlist配列プロパティを持つオブジェクトの場合
         forecastList = forecastData.list;
     } else {
         console.log('予期しない予報データ形式:', forecastData);
@@ -410,15 +393,11 @@ function showWeeklyForecast(forecastData) {
         noDataMsg.style.textAlign = 'center';
         noDataMsg.style.width = '100%';
         noDataMsg.style.padding = '20px';
-        slideShowContainer.appendChild(noDataMsg);
-        forecastSection.appendChild(slideShowContainer);
+        forecastSection.appendChild(noDataMsg);
         container.appendChild(forecastSection);
         console.log('予報データがないため、処理を終了します');
         return;
     }
-    
-    // デバッグ用：最初の予報データの構造を確認
-    console.log('最初の予報データの例:', forecastList[0]);
     
     // ケルビンを摂氏に変換する関数
     const kelvinToCelsius = (kelvin) => {
@@ -438,7 +417,6 @@ function showWeeklyForecast(forecastData) {
             
             const date = new Date(forecast.dt * 1000);
             const dateString = date.toLocaleDateString('ja-JP');
-            console.log(`処理中の日付: ${dateString}`, forecast);
             
             // まだその日のデータがなければ初期化
             if (!dailyForecasts[dateString]) {
@@ -453,13 +431,10 @@ function showWeeklyForecast(forecastData) {
                 };
             }
             
-            // 気温データを追加（エラー処理を追加）
+            // 気温データを追加
             if (forecast.main && typeof forecast.main.temp !== 'undefined') {
-                // ケルビンから摂氏に変換して保存
                 const celsiusTemp = kelvinToCelsius(forecast.main.temp);
                 dailyForecasts[dateString].temps.push(parseFloat(celsiusTemp));
-            } else {
-                console.warn('気温データがありません:', forecast);
             }
             
             // 湿度データを追加
@@ -483,15 +458,12 @@ function showWeeklyForecast(forecastData) {
                 const japaneseWeather = translateWeather(englishWeather);
                 dailyForecasts[dateString].weather.push(japaneseWeather);
             } else {
-                console.warn('天気の説明がありません:', forecast);
                 dailyForecasts[dateString].weather.push('不明');
             }
         } catch (err) {
             console.error('予報データの処理中にエラーが発生しました:', err, forecast);
         }
     });
-    
-    console.log('日付ごとにグループ化した予報:', dailyForecasts);
     
     // グループ化されたデータがない場合
     if (Object.keys(dailyForecasts).length === 0) {
@@ -500,206 +472,109 @@ function showWeeklyForecast(forecastData) {
         noDataMsg.style.textAlign = 'center';
         noDataMsg.style.width = '100%';
         noDataMsg.style.padding = '20px';
-        slideShowContainer.appendChild(noDataMsg);
-        forecastSection.appendChild(slideShowContainer);
+        forecastSection.appendChild(noDataMsg);
         container.appendChild(forecastSection);
         console.log('処理可能な予報データがないため、終了します');
         return;
     }
     
-    // 日ごとのカードを作成（最大7日分）
-    const forecastCards = [];
-    Object.values(dailyForecasts).slice(0, 7).forEach((dayData, index) => {
+    // 日付データを最大7日分取得
+    const forecasts = Object.values(dailyForecasts).slice(0, 7);
+    
+    if (isSmallScreen) {
+        // スマホサイズの場合はスライドショーで表示
+        createSlideshow(forecasts, forecastSection);
+    } else {
+        // PCサイズの場合はグリッド表示
+        createGridView(forecasts, forecastSection);
+    }
+    
+    container.appendChild(forecastSection);
+    
+    // 画面サイズが変わった時に表示を切り替える
+    window.addEventListener('resize', () => {
+        const newIsSmallScreen = window.innerWidth < 768;
+        // 画面サイズの区分が変わった場合のみ再描画
+        if (newIsSmallScreen !== isSmallScreen) {
+            showWeeklyForecast(forecastData);
+        }
+    });
+    
+    console.log('週間天気予報の表示が完了しました');
+}
+
+// PCサイズ用のグリッド表示を作成する関数
+function createGridView(forecasts, container) {
+    // グリッドコンテナ
+    const gridContainer = document.createElement('div');
+    gridContainer.style.display = 'flex';
+    gridContainer.style.flexWrap = 'wrap';
+    gridContainer.style.justifyContent = 'space-between';
+    gridContainer.style.gap = '15px';
+    gridContainer.style.marginTop = '20px';
+    
+    forecasts.forEach(dayData => {
         try {
-            const dayCard = document.createElement('div');
-            dayCard.className = 'forecast-slide';
-            dayCard.style.flex = '0 0 100%'; // 各スライドは幅100%
-            dayCard.style.backgroundColor = 'white';
-            dayCard.style.borderRadius = '12px';
-            dayCard.style.padding = '20px';
-            dayCard.style.textAlign = 'center';
-            dayCard.style.height = '100%';
-            dayCard.style.boxSizing = 'border-box';
+            // カード作成
+            const dayCard = createDayCard(dayData, 'grid');
+            dayCard.style.flex = '1';
+            dayCard.style.minWidth = '150px';
+            dayCard.style.maxWidth = 'calc(100% / 4 - 15px)'; // 4カラムまで
+            dayCard.style.transition = 'transform 0.3s ease, box-shadow 0.3s ease';
             
-            // 曜日
-            const weekday = dayData.date.toLocaleDateString('ja-JP', { weekday: 'short' });
-            const dateHeader = document.createElement('h4');
-            dateHeader.textContent = `${dayData.date.getMonth() + 1}/${dayData.date.getDate()} (${weekday})`;
-            dateHeader.style.margin = '0 0 15px 0';
-            dateHeader.style.fontSize = '18px';
-            dateHeader.style.fontWeight = '600';
-            dateHeader.style.color = '#33691E'; // 濃い緑色
-            dateHeader.style.borderBottom = '1px solid #E8F5E9';
-            dateHeader.style.paddingBottom = '10px';
-            dayCard.appendChild(dateHeader);
-            
-            // 主な天気（最も頻度の高い天気を表示）
-            const weatherCounts = {};
-            dayData.weather.forEach(w => {
-                weatherCounts[w] = (weatherCounts[w] || 0) + 1;
+            // ホバーエフェクト
+            dayCard.addEventListener('mouseover', () => {
+                dayCard.style.transform = 'translateY(-5px)';
+                dayCard.style.boxShadow = '0 10px 20px rgba(76, 175, 80, 0.15)';
             });
             
-            let mainWeather = '';
-            let maxCount = 0;
-            for (const [weather, count] of Object.entries(weatherCounts)) {
-                if (count > maxCount) {
-                    maxCount = count;
-                    mainWeather = weather;
-                }
-            }
+            dayCard.addEventListener('mouseout', () => {
+                dayCard.style.transform = 'translateY(0)';
+                dayCard.style.boxShadow = '0 4px 15px rgba(76, 175, 80, 0.1)';
+            });
             
-            // 天気に応じた絵文字を表示
-            const weatherEmoji = document.createElement('div');
-            weatherEmoji.style.fontSize = '70px';
-            weatherEmoji.style.margin = '20px 0';
-            weatherEmoji.style.textShadow = '0 3px 10px rgba(0,0,0,0.1)';
-            
-            // 天気に応じた絵文字を設定
-            if (mainWeather === '快晴') {
-                weatherEmoji.textContent = '🌞';
-            } else if (mainWeather.includes('晴れ')) {
-                weatherEmoji.textContent = '🌤️';
-            } else if (mainWeather.includes('曇り')) {
-                weatherEmoji.textContent = '☁️';
-            } else if (mainWeather.includes('雨')) {
-                weatherEmoji.textContent = '🌧️';
-            } else if (mainWeather.includes('雪')) {
-                weatherEmoji.textContent = '❄️';
-            } else if (mainWeather.includes('雷')) {
-                weatherEmoji.textContent = '⚡';
-            } else if (mainWeather.includes('霧')) {
-                weatherEmoji.textContent = '🌫️';
-            } else {
-                weatherEmoji.textContent = '🌈';
-            }
-            
-            dayCard.appendChild(weatherEmoji);
-            
-            // 天気の説明
-            const weatherDiv = document.createElement('div');
-            weatherDiv.textContent = mainWeather || '天気データなし';
-            weatherDiv.style.fontSize = '22px';
-            weatherDiv.style.fontWeight = '500';
-            weatherDiv.style.color = '#4CAF50';
-            weatherDiv.style.margin = '0 0 20px 0';
-            dayCard.appendChild(weatherDiv);
-            
-            // 最高・最低気温
-            const temps = dayData.temps;
-            if (temps && temps.length > 0) {
-                const maxTemp = Math.max(...temps);
-                const minTemp = Math.min(...temps);
-                
-                const tempDiv = document.createElement('div');
-                tempDiv.style.display = 'flex';
-                tempDiv.style.justifyContent = 'center';
-                tempDiv.style.alignItems = 'center';
-                tempDiv.style.gap = '20px';
-                tempDiv.style.margin = '15px 0';
-                
-                const maxTempDiv = document.createElement('div');
-                maxTempDiv.innerHTML = `<div style="font-size: 14px; color: #757575; margin-bottom: 5px;">最高</div>
-                                       <div style="font-size: 28px; color: #FF5722; font-weight: bold;">${maxTemp.toFixed(1)}°C</div>`;
-                
-                const minTempDiv = document.createElement('div');
-                minTempDiv.innerHTML = `<div style="font-size: 14px; color: #757575; margin-bottom: 5px;">最低</div>
-                                       <div style="font-size: 28px; color: #2196F3; font-weight: bold;">${minTemp.toFixed(1)}°C</div>`;
-                
-                tempDiv.appendChild(maxTempDiv);
-                tempDiv.appendChild(minTempDiv);
-                dayCard.appendChild(tempDiv);
-            } else {
-                const tempDiv = document.createElement('div');
-                tempDiv.textContent = '気温データなし';
-                tempDiv.style.color = '#757575';
-                tempDiv.style.margin = '15px 0';
-                dayCard.appendChild(tempDiv);
-            }
-            
-            // 詳細情報エリア
-            const detailsContainer = document.createElement('div');
-            detailsContainer.style.marginTop = '20px';
-            detailsContainer.style.padding = '15px 10px 5px';
-            detailsContainer.style.borderTop = '1px dashed #E8F5E9';
-            detailsContainer.style.display = 'flex';
-            detailsContainer.style.justifyContent = 'space-around';
-            
-            // 湿度の表示（平均値）
-            if (dayData.humidity && dayData.humidity.length > 0) {
-                const avgHumidity = dayData.humidity.reduce((sum, val) => sum + val, 0) / dayData.humidity.length;
-                const humidityDiv = document.createElement('div');
-                humidityDiv.style.textAlign = 'center';
-                humidityDiv.innerHTML = `<div style="color: #757575; font-size: 14px;">湿度</div>
-                                       <div style="color: #1976D2; font-weight: 500; font-size: 18px;">${Math.round(avgHumidity)}%</div>`;
-                detailsContainer.appendChild(humidityDiv);
-            }
-            
-            // 風速の表示（平均値）
-            if (dayData.wind && dayData.wind.length > 0) {
-                const avgWind = dayData.wind.reduce((sum, val) => sum + val, 0) / dayData.wind.length;
-                const windDiv = document.createElement('div');
-                windDiv.style.textAlign = 'center';
-                windDiv.innerHTML = `<div style="color: #757575; font-size: 14px;">風速</div>
-                                   <div style="color: #43A047; font-weight: 500; font-size: 18px;">${avgWind.toFixed(1)}m/s</div>`;
-                detailsContainer.appendChild(windDiv);
-            }
-            
-            // 気圧の表示（平均値）
-            if (dayData.pressure && dayData.pressure.length > 0) {
-                const avgPressure = dayData.pressure.reduce((sum, val) => sum + val, 0) / dayData.pressure.length;
-                const pressureDiv = document.createElement('div');
-                pressureDiv.style.textAlign = 'center';
-                pressureDiv.innerHTML = `<div style="color: #757575; font-size: 14px;">気圧</div>
-                                       <div style="color: #7B1FA2; font-weight: 500; font-size: 18px;">${Math.round(avgPressure)}hPa</div>`;
-                detailsContainer.appendChild(pressureDiv);
-            }
-            
-            dayCard.appendChild(detailsContainer);
+            gridContainer.appendChild(dayCard);
+        } catch (err) {
+            console.error('日ごとのカード作成中にエラーが発生しました:', err, dayData);
+        }
+    });
+    
+    container.appendChild(gridContainer);
+}
+
+// スマホサイズ用のスライドショーを作成する関数
+function createSlideshow(forecasts, container) {
+    // スライドショーコンテナ
+    const slideShowContainer = document.createElement('div');
+    slideShowContainer.style.position = 'relative';
+    slideShowContainer.style.margin = '20px 0';
+    slideShowContainer.style.overflow = 'hidden';
+    slideShowContainer.style.borderRadius = '12px';
+    slideShowContainer.style.boxShadow = '0 6px 20px rgba(76, 175, 80, 0.15)';
+    
+    // スライドトラック
+    const slideTrack = document.createElement('div');
+    slideTrack.style.display = 'flex';
+    slideTrack.style.transition = 'transform 0.3s ease-in-out';
+    slideTrack.style.width = '100%';
+    slideShowContainer.appendChild(slideTrack);
+    
+    // 各スライドを作成
+    const forecastCards = [];
+    forecasts.forEach(dayData => {
+        try {
+            const dayCard = createDayCard(dayData, 'slide');
+            dayCard.style.flex = '0 0 100%'; // 各スライドは幅100%
             slideTrack.appendChild(dayCard);
             forecastCards.push(dayCard);
-            
         } catch (err) {
-            console.error('日ごとの予報カード作成中にエラーが発生しました:', err, dayData);
+            console.error('スライド作成中にエラーが発生しました:', err, dayData);
         }
     });
     
     // 現在のスライドインデックス
     let currentSlide = 0;
     const totalSlides = forecastCards.length;
-    
-    // スライドショーコントロール - 矢印ボタン
-    const createArrowButton = (direction) => {
-        const button = document.createElement('button');
-        button.textContent = direction === 'prev' ? '◀' : '▶';
-        button.style.position = 'absolute';
-        button.style.top = '50%';
-        button.style.transform = 'translateY(-50%)';
-        button.style[direction === 'prev' ? 'left' : 'right'] = '10px';
-        button.style.zIndex = '10';
-        button.style.backgroundColor = 'rgba(76, 175, 80, 0.7)';
-        button.style.color = 'white';
-        button.style.border = 'none';
-        button.style.borderRadius = '50%';
-        button.style.width = '40px';
-        button.style.height = '40px';
-        button.style.fontSize = '18px';
-        button.style.cursor = 'pointer';
-        button.style.display = 'flex';
-        button.style.justifyContent = 'center';
-        button.style.alignItems = 'center';
-        button.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
-        button.style.transition = 'background-color 0.3s';
-        
-        button.addEventListener('mouseover', () => {
-            button.style.backgroundColor = 'rgba(76, 175, 80, 1)';
-        });
-        
-        button.addEventListener('mouseout', () => {
-            button.style.backgroundColor = 'rgba(76, 175, 80, 0.7)';
-        });
-        
-        return button;
-    };
     
     // 前へボタン
     const prevButton = createArrowButton('prev');
@@ -714,19 +589,6 @@ function showWeeklyForecast(forecastData) {
         goToSlide(currentSlide + 1);
     });
     slideShowContainer.appendChild(nextButton);
-    
-    // スライド移動関数
-    const goToSlide = (index) => {
-        // 範囲外のインデックスを循環させる
-        let newIndex = index;
-        if (newIndex < 0) newIndex = totalSlides - 1;
-        if (newIndex >= totalSlides) newIndex = 0;
-        
-        currentSlide = newIndex;
-        slideTrack.style.transform = `translateX(-${currentSlide * 100}%)`;
-        updateDots();
-        updateButtonVisibility();
-    };
     
     // ドット（ページネーション）コンテナ
     const dotsContainer = document.createElement('div');
@@ -754,6 +616,18 @@ function showWeeklyForecast(forecastData) {
         dotsContainer.appendChild(dot);
     }
     
+    // スライド移動関数
+    const goToSlide = (index) => {
+        // 範囲外のインデックスを循環させる
+        let newIndex = index;
+        if (newIndex < 0) newIndex = totalSlides - 1;
+        if (newIndex >= totalSlides) newIndex = 0;
+        
+        currentSlide = newIndex;
+        slideTrack.style.transform = `translateX(-${currentSlide * 100}%)`;
+        updateDots();
+    };
+    
     // ドットの更新
     const updateDots = () => {
         dots.forEach((dot, i) => {
@@ -761,15 +635,8 @@ function showWeeklyForecast(forecastData) {
         });
     };
     
-    // ボタンの表示/非表示を更新
-    const updateButtonVisibility = () => {
-        // 必要に応じて端のスライドでボタンを非表示にすることも可能
-        // ここでは循環するので常に表示
-    };
-    
     // タッチスワイプ機能
     let startX, endX;
-    let isDragging = false;
     const threshold = 50; // スワイプを検出する閾値（ピクセル）
     
     slideShowContainer.addEventListener('touchstart', (e) => {
@@ -779,7 +646,7 @@ function showWeeklyForecast(forecastData) {
     slideShowContainer.addEventListener('touchmove', (e) => {
         if (!startX) return;
         endX = e.touches[0].clientX;
-        // スワイプ中の視覚的フィードバック（オプション）
+        // スワイプ中の視覚的フィードバック
         const diff = endX - startX;
         const movePercent = diff / slideShowContainer.offsetWidth;
         // 抵抗を入れてドラッグの効果を制限
@@ -812,20 +679,9 @@ function showWeeklyForecast(forecastData) {
         endX = null;
     });
     
-    // 自動スライド（オプション）
-    // const autoSlideInterval = setInterval(() => {
-    //     goToSlide(currentSlide + 1);
-    // }, 5000); // 5秒ごとに切り替え
-    
-    // カルーセルを停止する関数（必要に応じて）
-    // const stopAutoSlide = () => {
-    //     clearInterval(autoSlideInterval);
-    // };
-    
     // スライドコンテナを追加
-    forecastSection.appendChild(slideShowContainer);
-    forecastSection.appendChild(dotsContainer);
-    container.appendChild(forecastSection);
+    container.appendChild(slideShowContainer);
+    container.appendChild(dotsContainer);
     
     // スライド高さを統一（最も高いスライドに合わせる）
     setTimeout(() => {
@@ -838,6 +694,205 @@ function showWeeklyForecast(forecastData) {
             slideShowContainer.style.height = `${maxHeight}px`;
         }
     }, 0);
+}
+
+// 天気カードを作成する共通関数
+function createDayCard(dayData, mode) {
+    const isSlide = mode === 'slide';
     
-    console.log('週間天気予報のスライドショー表示が完了しました');
+    const dayCard = document.createElement('div');
+    dayCard.style.backgroundColor = 'white';
+    dayCard.style.borderRadius = '12px';
+    dayCard.style.padding = isSlide ? '20px' : '15px';
+    dayCard.style.boxShadow = '0 4px 15px rgba(76, 175, 80, 0.1)';
+    dayCard.style.textAlign = 'center';
+    dayCard.style.height = '100%';
+    dayCard.style.boxSizing = 'border-box';
+    
+    // 曜日
+    const weekday = dayData.date.toLocaleDateString('ja-JP', { weekday: 'short' });
+    const dateHeader = document.createElement('h4');
+    dateHeader.textContent = `${dayData.date.getMonth() + 1}/${dayData.date.getDate()} (${weekday})`;
+    dateHeader.style.margin = '0 0 15px 0';
+    dateHeader.style.fontSize = isSlide ? '18px' : '16px';
+    dateHeader.style.fontWeight = '600';
+    dateHeader.style.color = '#33691E'; // 濃い緑色
+    dateHeader.style.borderBottom = '1px solid #E8F5E9';
+    dateHeader.style.paddingBottom = '10px';
+    dayCard.appendChild(dateHeader);
+    
+    // 主な天気（最も頻度の高い天気を表示）
+    const weatherCounts = {};
+    dayData.weather.forEach(w => {
+        weatherCounts[w] = (weatherCounts[w] || 0) + 1;
+    });
+    
+    let mainWeather = '';
+    let maxCount = 0;
+    for (const [weather, count] of Object.entries(weatherCounts)) {
+        if (count > maxCount) {
+            maxCount = count;
+            mainWeather = weather;
+        }
+    }
+    
+    // 天気に応じた絵文字を表示
+    const weatherEmoji = document.createElement('div');
+    weatherEmoji.style.fontSize = isSlide ? '70px' : '50px';
+    weatherEmoji.style.margin = isSlide ? '20px 0' : '15px 0';
+    weatherEmoji.style.textShadow = '0 3px 10px rgba(0,0,0,0.1)';
+    
+    // 天気に応じた絵文字を設定
+    if (mainWeather === '快晴') {
+        weatherEmoji.textContent = '🌞';
+    } else if (mainWeather.includes('晴れ')) {
+        weatherEmoji.textContent = '🌤️';
+    } else if (mainWeather.includes('曇り')) {
+        weatherEmoji.textContent = '☁️';
+    } else if (mainWeather.includes('雨')) {
+        weatherEmoji.textContent = '🌧️';
+    } else if (mainWeather.includes('雪')) {
+        weatherEmoji.textContent = '❄️';
+    } else if (mainWeather.includes('雷')) {
+        weatherEmoji.textContent = '⚡';
+    } else if (mainWeather.includes('霧')) {
+        weatherEmoji.textContent = '🌫️';
+    } else {
+        weatherEmoji.textContent = '🌈';
+    }
+    
+    dayCard.appendChild(weatherEmoji);
+    
+    // 天気の説明
+    const weatherDiv = document.createElement('div');
+    weatherDiv.textContent = mainWeather || '天気データなし';
+    weatherDiv.style.fontSize = isSlide ? '22px' : '16px';
+    weatherDiv.style.fontWeight = '500';
+    weatherDiv.style.color = '#4CAF50';
+    weatherDiv.style.margin = isSlide ? '0 0 20px 0' : '0 0 15px 0';
+    dayCard.appendChild(weatherDiv);
+    
+    // 最高・最低気温
+    const temps = dayData.temps;
+    if (temps && temps.length > 0) {
+        const maxTemp = Math.max(...temps);
+        const minTemp = Math.min(...temps);
+        
+        const tempDiv = document.createElement('div');
+        
+        if (isSlide) {
+            // スライド用の大きめ表示
+            tempDiv.style.display = 'flex';
+            tempDiv.style.justifyContent = 'center';
+            tempDiv.style.alignItems = 'center';
+            tempDiv.style.gap = '20px';
+            tempDiv.style.margin = '15px 0';
+            
+            const maxTempDiv = document.createElement('div');
+            maxTempDiv.innerHTML = `<div style="font-size: 14px; color: #757575; margin-bottom: 5px;">最高</div>
+                                   <div style="font-size: 28px; color: #FF5722; font-weight: bold;">${maxTemp.toFixed(1)}°C</div>`;
+            
+            const minTempDiv = document.createElement('div');
+            minTempDiv.innerHTML = `<div style="font-size: 14px; color: #757575; margin-bottom: 5px;">最低</div>
+                                   <div style="font-size: 28px; color: #2196F3; font-weight: bold;">${minTemp.toFixed(1)}°C</div>`;
+            
+            tempDiv.appendChild(maxTempDiv);
+            tempDiv.appendChild(minTempDiv);
+        } else {
+            // グリッド用のコンパクト表示
+            tempDiv.style.margin = '10px 0';
+            tempDiv.innerHTML = `<span style="color: #FF5722; font-weight: bold; font-size: 18px;">${maxTemp.toFixed(1)}°C</span>
+                               <span style="color: #757575; margin: 0 5px;">/</span>
+                               <span style="color: #2196F3; font-weight: bold; font-size: 18px;">${minTemp.toFixed(1)}°C</span>`;
+        }
+        
+        dayCard.appendChild(tempDiv);
+    } else {
+        const tempDiv = document.createElement('div');
+        tempDiv.textContent = '気温データなし';
+        tempDiv.style.color = '#757575';
+        tempDiv.style.margin = '15px 0';
+        dayCard.appendChild(tempDiv);
+    }
+    
+    // 詳細情報エリア
+    const detailsContainer = document.createElement('div');
+    detailsContainer.style.marginTop = isSlide ? '20px' : '15px';
+    detailsContainer.style.padding = isSlide ? '15px 10px 5px' : '10px 5px 5px';
+    detailsContainer.style.borderTop = '1px dashed #E8F5E9';
+    detailsContainer.style.display = 'flex';
+    detailsContainer.style.justifyContent = 'space-around';
+    
+    // 湿度の表示（平均値）
+    if (dayData.humidity && dayData.humidity.length > 0) {
+        const avgHumidity = dayData.humidity.reduce((sum, val) => sum + val, 0) / dayData.humidity.length;
+        const humidityDiv = document.createElement('div');
+        humidityDiv.style.textAlign = 'center';
+        const fontSize = isSlide ? '14px' : '12px';
+        const valueFontSize = isSlide ? '18px' : '14px';
+        humidityDiv.innerHTML = `<div style="color: #757575; font-size: ${fontSize};">湿度</div>
+                               <div style="color: #1976D2; font-weight: 500; font-size: ${valueFontSize};">${Math.round(avgHumidity)}%</div>`;
+        detailsContainer.appendChild(humidityDiv);
+    }
+    
+    // 風速の表示（平均値）
+    if (dayData.wind && dayData.wind.length > 0) {
+        const avgWind = dayData.wind.reduce((sum, val) => sum + val, 0) / dayData.wind.length;
+        const windDiv = document.createElement('div');
+        windDiv.style.textAlign = 'center';
+        const fontSize = isSlide ? '14px' : '12px';
+        const valueFontSize = isSlide ? '18px' : '14px';
+        windDiv.innerHTML = `<div style="color: #757575; font-size: ${fontSize};">風速</div>
+                           <div style="color: #43A047; font-weight: 500; font-size: ${valueFontSize};">${avgWind.toFixed(1)}m/s</div>`;
+        detailsContainer.appendChild(windDiv);
+    }
+    
+    // 気圧の表示（平均値）
+    if (dayData.pressure && dayData.pressure.length > 0) {
+        const avgPressure = dayData.pressure.reduce((sum, val) => sum + val, 0) / dayData.pressure.length;
+        const pressureDiv = document.createElement('div');
+        pressureDiv.style.textAlign = 'center';
+        const fontSize = isSlide ? '14px' : '12px';
+        const valueFontSize = isSlide ? '18px' : '14px';
+        pressureDiv.innerHTML = `<div style="color: #757575; font-size: ${fontSize};">気圧</div>
+                               <div style="color: #7B1FA2; font-weight: 500; font-size: ${valueFontSize};">${Math.round(avgPressure)}hPa</div>`;
+        detailsContainer.appendChild(pressureDiv);
+    }
+    
+    dayCard.appendChild(detailsContainer);
+    return dayCard;
+}
+
+// 矢印ボタン作成関数
+function createArrowButton(direction) {
+    const button = document.createElement('button');
+    button.textContent = direction === 'prev' ? '◀' : '▶';
+    button.style.position = 'absolute';
+    button.style.top = '50%';
+    button.style.transform = 'translateY(-50%)';
+    button.style[direction === 'prev' ? 'left' : 'right'] = '10px';
+    button.style.zIndex = '10';
+    button.style.backgroundColor = 'rgba(76, 175, 80, 0.7)';
+    button.style.color = 'white';
+    button.style.border = 'none';
+    button.style.borderRadius = '50%';
+    button.style.width = '40px';
+    button.style.height = '40px';
+    button.style.fontSize = '18px';
+    button.style.cursor = 'pointer';
+    button.style.display = 'flex';
+    button.style.justifyContent = 'center';
+    button.style.alignItems = 'center';
+    button.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
+    button.style.transition = 'background-color 0.3s';
+    
+    button.addEventListener('mouseover', () => {
+        button.style.backgroundColor = 'rgba(76, 175, 80, 1)';
+    });
+    
+    button.addEventListener('mouseout', () => {
+        button.style.backgroundColor = 'rgba(76, 175, 80, 0.7)';
+    });
+    
+    return button;
 }
