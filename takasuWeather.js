@@ -544,62 +544,18 @@ function createGridView(forecasts, container) {
 
 // スマホサイズ用のスライドショーを作成する関数
 function createSlideshow(forecasts, container) {
-    // スライドショーコンテナ
-    const slideShowContainer = document.createElement('div');
-    slideShowContainer.style.position = 'relative';
-    slideShowContainer.style.margin = '20px 0';
-    slideShowContainer.style.overflow = 'hidden';
-    slideShowContainer.style.borderRadius = '12px';
-    slideShowContainer.style.boxShadow = '0 6px 20px rgba(76, 175, 80, 0.15)';
-    slideShowContainer.style.backgroundColor = 'white';
-    slideShowContainer.style.width = '100%';
-    slideShowContainer.style.minHeight = '500px'; // 最小高さを設定して崩れを防止
+    // 外側のコンテナ（全体のサイズを固定）
+    const outerContainer = document.createElement('div');
+    outerContainer.style.maxWidth = '100%';
+    outerContainer.style.margin = '20px auto';
+    outerContainer.style.position = 'relative';
     
-    // スライドトラック
-    const slideTrack = document.createElement('div');
-    slideTrack.style.display = 'flex';
-    slideTrack.style.transition = 'transform 0.3s ease-in-out';
-    slideTrack.style.width = `${forecasts.length * 100}%`; // 複数のスライドを横に並べる
-    slideShowContainer.appendChild(slideTrack);
-    
-    // 各スライドを作成
-    const forecastCards = [];
-    forecasts.forEach(dayData => {
-        try {
-            const slideWrapper = document.createElement('div');
-            slideWrapper.style.flex = `0 0 ${100 / forecasts.length}%`; // 均等幅
-            slideWrapper.style.padding = '10px';
-            slideWrapper.style.boxSizing = 'border-box';
-            slideWrapper.style.overflow = 'hidden'; // オーバーフローを制御
-            
-            const dayCard = createDayCard(dayData, 'slide');
-            dayCard.style.height = '100%';
-            slideWrapper.appendChild(dayCard);
-            
-            slideTrack.appendChild(slideWrapper);
-            forecastCards.push(slideWrapper);
-        } catch (err) {
-            console.error('スライド作成中にエラーが発生しました:', err, dayData);
-        }
-    });
-    
-    // 現在のスライドインデックス
-    let currentSlide = 0;
-    const totalSlides = forecastCards.length;
-    
-    // 前へボタン
-    const prevButton = createArrowButton('prev');
-    prevButton.addEventListener('click', () => {
-        goToSlide(currentSlide - 1);
-    });
-    slideShowContainer.appendChild(prevButton);
-    
-    // 次へボタン
-    const nextButton = createArrowButton('next');
-    nextButton.addEventListener('click', () => {
-        goToSlide(currentSlide + 1);
-    });
-    slideShowContainer.appendChild(nextButton);
+    // スライドカードのサンプルを作成してサイズを事前計算
+    const sampleCard = createDayCard(forecasts[0], 'slide');
+    sampleCard.style.position = 'absolute';
+    sampleCard.style.visibility = 'hidden';
+    sampleCard.style.zIndex = '-1';
+    document.body.appendChild(sampleCard);
     
     // ドット（ページネーション）コンテナ
     const dotsContainer = document.createElement('div');
@@ -607,6 +563,113 @@ function createSlideshow(forecasts, container) {
     dotsContainer.style.justifyContent = 'center';
     dotsContainer.style.margin = '15px 0 5px';
     dotsContainer.style.gap = '8px';
+    
+    // スライドの初期表示
+    let currentSlide = 0;
+    const totalSlides = forecasts.length;
+    
+    // スライド表示部分
+    const slideView = document.createElement('div');
+    slideView.style.width = '100%';
+    slideView.style.borderRadius = '12px';
+    slideView.style.backgroundColor = 'white';
+    slideView.style.boxShadow = '0 6px 20px rgba(76, 175, 80, 0.15)';
+    slideView.style.overflow = 'hidden'; // 内容が収まらない場合は隠す
+    slideView.style.height = '650px'; // 初期高さを十分に確保
+    
+    // レンダリング完了後に適切なサイズに調整
+    setTimeout(() => {
+        document.body.removeChild(sampleCard);
+        // 実際の高さ+余裕を追加
+        const actualHeight = Math.max(sampleCard.offsetHeight, 550) + 30;
+        slideView.style.height = `${actualHeight}px`;
+    }, 100);
+    
+    // 各スライドの内容を生成（最初は現在のスライドのみ表示）
+    function renderCurrentSlide() {
+        // スライドビューをクリア
+        slideView.innerHTML = '';
+        
+        // 現在のスライド用のカードを作成
+        const currentData = forecasts[currentSlide];
+        const card = createDayCard(currentData, 'slide');
+        card.style.padding = '20px';
+        card.style.boxSizing = 'border-box';
+        card.style.width = '100%';
+        card.style.height = '100%';
+        
+        // スライドビューに追加
+        slideView.appendChild(card);
+        
+        // ドットの状態を更新
+        updateDots();
+    }
+    
+    // 前へボタン
+    const prevButton = document.createElement('button');
+    prevButton.innerHTML = '◀';
+    prevButton.style.position = 'absolute';
+    prevButton.style.left = '10px';
+    prevButton.style.top = '50%';
+    prevButton.style.transform = 'translateY(-50%)';
+    prevButton.style.zIndex = '10';
+    prevButton.style.backgroundColor = 'rgba(76, 175, 80, 0.7)';
+    prevButton.style.color = 'white';
+    prevButton.style.border = 'none';
+    prevButton.style.borderRadius = '50%';
+    prevButton.style.width = '40px';
+    prevButton.style.height = '40px';
+    prevButton.style.fontSize = '18px';
+    prevButton.style.cursor = 'pointer';
+    prevButton.style.display = 'flex';
+    prevButton.style.justifyContent = 'center';
+    prevButton.style.alignItems = 'center';
+    prevButton.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
+    
+    prevButton.addEventListener('click', () => {
+        goToSlide(currentSlide - 1);
+    });
+    
+    prevButton.addEventListener('mouseover', () => {
+        prevButton.style.backgroundColor = 'rgba(76, 175, 80, 1)';
+    });
+    
+    prevButton.addEventListener('mouseout', () => {
+        prevButton.style.backgroundColor = 'rgba(76, 175, 80, 0.7)';
+    });
+    
+    // 次へボタン
+    const nextButton = document.createElement('button');
+    nextButton.innerHTML = '▶';
+    nextButton.style.position = 'absolute';
+    nextButton.style.right = '10px';
+    nextButton.style.top = '50%';
+    nextButton.style.transform = 'translateY(-50%)';
+    nextButton.style.zIndex = '10';
+    nextButton.style.backgroundColor = 'rgba(76, 175, 80, 0.7)';
+    nextButton.style.color = 'white';
+    nextButton.style.border = 'none';
+    nextButton.style.borderRadius = '50%';
+    nextButton.style.width = '40px';
+    nextButton.style.height = '40px';
+    nextButton.style.fontSize = '18px';
+    nextButton.style.cursor = 'pointer';
+    nextButton.style.display = 'flex';
+    nextButton.style.justifyContent = 'center';
+    nextButton.style.alignItems = 'center';
+    nextButton.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
+    
+    nextButton.addEventListener('click', () => {
+        goToSlide(currentSlide + 1);
+    });
+    
+    nextButton.addEventListener('mouseover', () => {
+        nextButton.style.backgroundColor = 'rgba(76, 175, 80, 1)';
+    });
+    
+    nextButton.addEventListener('mouseout', () => {
+        nextButton.style.backgroundColor = 'rgba(76, 175, 80, 0.7)';
+    });
     
     // ドットの作成
     const dots = [];
@@ -628,49 +691,40 @@ function createSlideshow(forecasts, container) {
     }
     
     // スライド移動関数
-    const goToSlide = (index) => {
+    function goToSlide(index) {
         // 範囲外のインデックスを循環させる
         let newIndex = index;
         if (newIndex < 0) newIndex = totalSlides - 1;
         if (newIndex >= totalSlides) newIndex = 0;
         
+        // 現在のスライドを更新
         currentSlide = newIndex;
-        // 移動する距離を計算（各スライドの幅に応じて）
-        const slideWidth = 100 / totalSlides;
-        slideTrack.style.transform = `translateX(-${currentSlide * slideWidth}%)`;
-        updateDots();
-    };
+        
+        // 新しいスライド内容を描画
+        renderCurrentSlide();
+    }
     
     // ドットの更新
-    const updateDots = () => {
+    function updateDots() {
         dots.forEach((dot, i) => {
             dot.style.backgroundColor = i === currentSlide ? '#4CAF50' : '#e0e0e0';
         });
-    };
+    }
     
     // タッチスワイプ機能
     let startX, endX;
     const threshold = 50; // スワイプを検出する閾値（ピクセル）
     
-    slideShowContainer.addEventListener('touchstart', (e) => {
+    slideView.addEventListener('touchstart', (e) => {
         startX = e.touches[0].clientX;
     });
     
-    slideShowContainer.addEventListener('touchmove', (e) => {
+    slideView.addEventListener('touchmove', (e) => {
         if (!startX) return;
         endX = e.touches[0].clientX;
-        // スワイプ中の視覚的フィードバック
-        const diff = endX - startX;
-        const movePercent = diff / slideShowContainer.offsetWidth;
-        // 抵抗を入れてドラッグの効果を制限
-        const resistance = 0.3;
-        const slideWidth = 100 / totalSlides;
-        const translateX = -currentSlide * slideWidth + movePercent * slideWidth * resistance;
-        // スワイプ方向に少し動かす
-        slideTrack.style.transform = `translateX(${translateX}%)`;
     });
     
-    slideShowContainer.addEventListener('touchend', (e) => {
+    slideView.addEventListener('touchend', (e) => {
         if (!startX || !endX) return;
         const diff = endX - startX;
         
@@ -683,10 +737,6 @@ function createSlideshow(forecasts, container) {
                 // 左にスワイプ（次のスライド）
                 goToSlide(currentSlide + 1);
             }
-        } else {
-            // スワイプが不十分な場合は元の位置に戻す
-            const slideWidth = 100 / totalSlides;
-            slideTrack.style.transform = `translateX(-${currentSlide * slideWidth}%)`;
         }
         
         // リセット
@@ -694,60 +744,23 @@ function createSlideshow(forecasts, container) {
         endX = null;
     });
     
-    // スライドコンテナを追加
-    container.appendChild(slideShowContainer);
+    // 要素を配置
+    outerContainer.appendChild(slideView);
+    outerContainer.appendChild(prevButton);
+    outerContainer.appendChild(nextButton);
+    container.appendChild(outerContainer);
     container.appendChild(dotsContainer);
     
-    // すべての画像とデータが読み込まれた後に高さを調整
-    // より長い遅延を設定して、画面描画後に実行されるようにする
-    setTimeout(adjustSlideHeight, 500);
+    // 初期スライドを表示
+    renderCurrentSlide();
     
-    // 画面サイズが変更されたときに高さを再調整
-    window.addEventListener('resize', adjustSlideHeight);
-    
-    // スライド高さを調整する関数
-    function adjustSlideHeight() {
-        // 現在のスライドインデックスを保存
-        const currentIndex = currentSlide;
-        
-        // すべてのスライドを表示してサイズを計測できるようにする
-        slideTrack.style.transition = 'none';
-        slideTrack.style.transform = 'none';
-        
-        // すべての要素に一定の高さを一旦適用
-        forecastCards.forEach(card => {
-            card.style.height = 'auto';
-        });
-        
-        // 少し待機して要素が描画されるのを待つ
+    // 画面サイズ変更時の対応
+    window.addEventListener('resize', () => {
+        // 少し待機してからサイズ再調整
         setTimeout(() => {
-            let maxHeight = 0;
-            
-            // 最大高さを見つける
-            forecastCards.forEach(card => {
-                const cardHeight = card.offsetHeight;
-                maxHeight = Math.max(maxHeight, cardHeight);
-            });
-            
-            // 少し余裕を持たせる
-            maxHeight += 20;
-            
-            if (maxHeight > 0) {
-                // すべてのスライドに同じ高さを適用
-                forecastCards.forEach(card => {
-                    card.style.height = `${maxHeight}px`;
-                });
-                
-                // スライドショーコンテナの高さを設定
-                slideShowContainer.style.height = `${maxHeight}px`;
-            }
-            
-            // 元のスライド位置に戻す
-            slideTrack.style.transition = 'transform 0.3s ease-in-out';
-            const slideWidth = 100 / totalSlides;
-            slideTrack.style.transform = `translateX(-${currentIndex * slideWidth}%)`;
-        }, 100);
-    }
+            // 必要に応じてコンテナサイズを再調整できます
+        }, 200);
+    });
 }
 
 // 天気カードを作成する共通関数
@@ -993,38 +1006,4 @@ function createDayCard(dayData, mode) {
     }
     
     return dayCard;
-}
-
-// 矢印ボタン作成関数
-function createArrowButton(direction) {
-    const button = document.createElement('button');
-    button.textContent = direction === 'prev' ? '◀' : '▶';
-    button.style.position = 'absolute';
-    button.style.top = '50%';
-    button.style.transform = 'translateY(-50%)';
-    button.style[direction === 'prev' ? 'left' : 'right'] = '10px';
-    button.style.zIndex = '10';
-    button.style.backgroundColor = 'rgba(76, 175, 80, 0.7)';
-    button.style.color = 'white';
-    button.style.border = 'none';
-    button.style.borderRadius = '50%';
-    button.style.width = '40px';
-    button.style.height = '40px';
-    button.style.fontSize = '18px';
-    button.style.cursor = 'pointer';
-    button.style.display = 'flex';
-    button.style.justifyContent = 'center';
-    button.style.alignItems = 'center';
-    button.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.2)';
-    button.style.transition = 'background-color 0.3s';
-    
-    button.addEventListener('mouseover', () => {
-        button.style.backgroundColor = 'rgba(76, 175, 80, 1)';
-    });
-    
-    button.addEventListener('mouseout', () => {
-        button.style.backgroundColor = 'rgba(76, 175, 80, 0.7)';
-    });
-    
-    return button;
 }
