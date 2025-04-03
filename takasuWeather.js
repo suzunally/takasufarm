@@ -553,6 +553,7 @@ function createSlideshow(forecasts, container) {
     slideShowContainer.style.boxShadow = '0 6px 20px rgba(76, 175, 80, 0.15)';
     slideShowContainer.style.backgroundColor = 'white';
     slideShowContainer.style.width = '100%';
+    slideShowContainer.style.minHeight = '500px'; // 最小高さを設定して崩れを防止
     
     // スライドトラック
     const slideTrack = document.createElement('div');
@@ -569,6 +570,7 @@ function createSlideshow(forecasts, container) {
             slideWrapper.style.flex = `0 0 ${100 / forecasts.length}%`; // 均等幅
             slideWrapper.style.padding = '10px';
             slideWrapper.style.boxSizing = 'border-box';
+            slideWrapper.style.overflow = 'hidden'; // オーバーフローを制御
             
             const dayCard = createDayCard(dayData, 'slide');
             dayCard.style.height = '100%';
@@ -696,19 +698,56 @@ function createSlideshow(forecasts, container) {
     container.appendChild(slideShowContainer);
     container.appendChild(dotsContainer);
     
-    // スライド高さを統一（最も高いスライドに合わせる）
-    setTimeout(() => {
-        let maxHeight = 0;
+    // すべての画像とデータが読み込まれた後に高さを調整
+    // より長い遅延を設定して、画面描画後に実行されるようにする
+    setTimeout(adjustSlideHeight, 500);
+    
+    // 画面サイズが変更されたときに高さを再調整
+    window.addEventListener('resize', adjustSlideHeight);
+    
+    // スライド高さを調整する関数
+    function adjustSlideHeight() {
+        // 現在のスライドインデックスを保存
+        const currentIndex = currentSlide;
+        
+        // すべてのスライドを表示してサイズを計測できるようにする
+        slideTrack.style.transition = 'none';
+        slideTrack.style.transform = 'none';
+        
+        // すべての要素に一定の高さを一旦適用
         forecastCards.forEach(card => {
-            maxHeight = Math.max(maxHeight, card.offsetHeight);
+            card.style.height = 'auto';
         });
         
-        if (maxHeight > 0) {
+        // 少し待機して要素が描画されるのを待つ
+        setTimeout(() => {
+            let maxHeight = 0;
+            
+            // 最大高さを見つける
             forecastCards.forEach(card => {
-                card.style.height = `${maxHeight}px`;
+                const cardHeight = card.offsetHeight;
+                maxHeight = Math.max(maxHeight, cardHeight);
             });
-        }
-    }, 0);
+            
+            // 少し余裕を持たせる
+            maxHeight += 20;
+            
+            if (maxHeight > 0) {
+                // すべてのスライドに同じ高さを適用
+                forecastCards.forEach(card => {
+                    card.style.height = `${maxHeight}px`;
+                });
+                
+                // スライドショーコンテナの高さを設定
+                slideShowContainer.style.height = `${maxHeight}px`;
+            }
+            
+            // 元のスライド位置に戻す
+            slideTrack.style.transition = 'transform 0.3s ease-in-out';
+            const slideWidth = 100 / totalSlides;
+            slideTrack.style.transform = `translateX(-${currentIndex * slideWidth}%)`;
+        }, 100);
+    }
 }
 
 // 天気カードを作成する共通関数
