@@ -394,14 +394,46 @@ function showWeeklyForecast(forecastData) {
             dateHeader.style.margin = '5px 0';
             dayCard.appendChild(dateHeader);
             
-            // 天気アイコン（APIの仕様に合わせて調整）
-            if (dayData.icon) {
-                const iconImg = document.createElement('img');
-                iconImg.src = `https://openweathermap.org/img/wn/${dayData.icon}@2x.png`;
-                iconImg.style.width = '50px';
-                iconImg.style.height = '50px';
-                dayCard.appendChild(iconImg);
+            // 主な天気（最も頻度の高い天気を表示）
+            const weatherCounts = {};
+            dayData.weather.forEach(w => {
+                weatherCounts[w] = (weatherCounts[w] || 0) + 1;
+            });
+            
+            let mainWeather = '';
+            let maxCount = 0;
+            for (const [weather, count] of Object.entries(weatherCounts)) {
+                if (count > maxCount) {
+                    maxCount = count;
+                    mainWeather = weather;
+                }
             }
+            
+            // 天気に応じた絵文字を表示
+            const weatherEmoji = document.createElement('div');
+            weatherEmoji.style.fontSize = '40px';
+            weatherEmoji.style.margin = '10px 0';
+            
+            // 天気に応じた絵文字を設定
+            if (mainWeather === '快晴') {
+                weatherEmoji.textContent = '🌞';
+            } else if (mainWeather.includes('晴れ')) {
+                weatherEmoji.textContent = '🌤️';
+            } else if (mainWeather.includes('曇り')) {
+                weatherEmoji.textContent = '☁️';
+            } else if (mainWeather.includes('雨')) {
+                weatherEmoji.textContent = '🌧️';
+            } else if (mainWeather.includes('雪')) {
+                weatherEmoji.textContent = '❄️';
+            } else if (mainWeather.includes('雷')) {
+                weatherEmoji.textContent = '⚡';
+            } else if (mainWeather.includes('霧')) {
+                weatherEmoji.textContent = '🌫️';
+            } else {
+                weatherEmoji.textContent = '🌈';
+            }
+            
+            dayCard.appendChild(weatherEmoji);
             
             // 最高・最低気温
             const temps = dayData.temps;
@@ -416,21 +448,6 @@ function showWeeklyForecast(forecastData) {
                 const tempDiv = document.createElement('div');
                 tempDiv.textContent = '気温データなし';
                 dayCard.appendChild(tempDiv);
-            }
-            
-            // 主な天気（最も頻度の高い天気を表示）
-            const weatherCounts = {};
-            dayData.weather.forEach(w => {
-                weatherCounts[w] = (weatherCounts[w] || 0) + 1;
-            });
-            
-            let mainWeather = '';
-            let maxCount = 0;
-            for (const [weather, count] of Object.entries(weatherCounts)) {
-                if (count > maxCount) {
-                    maxCount = count;
-                    mainWeather = weather;
-                }
             }
             
             const weatherDiv = document.createElement('div');
