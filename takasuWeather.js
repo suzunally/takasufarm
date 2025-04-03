@@ -551,22 +551,31 @@ function createSlideshow(forecasts, container) {
     slideShowContainer.style.overflow = 'hidden';
     slideShowContainer.style.borderRadius = '12px';
     slideShowContainer.style.boxShadow = '0 6px 20px rgba(76, 175, 80, 0.15)';
+    slideShowContainer.style.backgroundColor = 'white';
+    slideShowContainer.style.width = '100%';
     
     // スライドトラック
     const slideTrack = document.createElement('div');
     slideTrack.style.display = 'flex';
     slideTrack.style.transition = 'transform 0.3s ease-in-out';
-    slideTrack.style.width = '100%';
+    slideTrack.style.width = `${forecasts.length * 100}%`; // 複数のスライドを横に並べる
     slideShowContainer.appendChild(slideTrack);
     
     // 各スライドを作成
     const forecastCards = [];
     forecasts.forEach(dayData => {
         try {
+            const slideWrapper = document.createElement('div');
+            slideWrapper.style.flex = `0 0 ${100 / forecasts.length}%`; // 均等幅
+            slideWrapper.style.padding = '10px';
+            slideWrapper.style.boxSizing = 'border-box';
+            
             const dayCard = createDayCard(dayData, 'slide');
-            dayCard.style.flex = '0 0 100%'; // 各スライドは幅100%
-            slideTrack.appendChild(dayCard);
-            forecastCards.push(dayCard);
+            dayCard.style.height = '100%';
+            slideWrapper.appendChild(dayCard);
+            
+            slideTrack.appendChild(slideWrapper);
+            forecastCards.push(slideWrapper);
         } catch (err) {
             console.error('スライド作成中にエラーが発生しました:', err, dayData);
         }
@@ -624,7 +633,9 @@ function createSlideshow(forecasts, container) {
         if (newIndex >= totalSlides) newIndex = 0;
         
         currentSlide = newIndex;
-        slideTrack.style.transform = `translateX(-${currentSlide * 100}%)`;
+        // 移動する距離を計算（各スライドの幅に応じて）
+        const slideWidth = 100 / totalSlides;
+        slideTrack.style.transform = `translateX(-${currentSlide * slideWidth}%)`;
         updateDots();
     };
     
@@ -651,7 +662,8 @@ function createSlideshow(forecasts, container) {
         const movePercent = diff / slideShowContainer.offsetWidth;
         // 抵抗を入れてドラッグの効果を制限
         const resistance = 0.3;
-        const translateX = -currentSlide * 100 + movePercent * 100 * resistance;
+        const slideWidth = 100 / totalSlides;
+        const translateX = -currentSlide * slideWidth + movePercent * slideWidth * resistance;
         // スワイプ方向に少し動かす
         slideTrack.style.transform = `translateX(${translateX}%)`;
     });
@@ -671,7 +683,8 @@ function createSlideshow(forecasts, container) {
             }
         } else {
             // スワイプが不十分な場合は元の位置に戻す
-            slideTrack.style.transform = `translateX(-${currentSlide * 100}%)`;
+            const slideWidth = 100 / totalSlides;
+            slideTrack.style.transform = `translateX(-${currentSlide * slideWidth}%)`;
         }
         
         // リセット
@@ -691,7 +704,9 @@ function createSlideshow(forecasts, container) {
         });
         
         if (maxHeight > 0) {
-            slideShowContainer.style.height = `${maxHeight}px`;
+            forecastCards.forEach(card => {
+                card.style.height = `${maxHeight}px`;
+            });
         }
     }, 0);
 }
@@ -703,11 +718,13 @@ function createDayCard(dayData, mode) {
     const dayCard = document.createElement('div');
     dayCard.style.backgroundColor = 'white';
     dayCard.style.borderRadius = '12px';
-    dayCard.style.padding = isSlide ? '20px' : '15px';
+    dayCard.style.padding = isSlide ? '15px' : '15px';
     dayCard.style.boxShadow = '0 4px 15px rgba(76, 175, 80, 0.1)';
     dayCard.style.textAlign = 'center';
     dayCard.style.height = '100%';
     dayCard.style.boxSizing = 'border-box';
+    dayCard.style.display = 'flex';
+    dayCard.style.flexDirection = 'column';
     
     // 曜日
     const weekday = dayData.date.toLocaleDateString('ja-JP', { weekday: 'short' });
@@ -736,10 +753,17 @@ function createDayCard(dayData, mode) {
         }
     }
     
+    // メインコンテンツ（flex: 1で高さを確保）
+    const mainContent = document.createElement('div');
+    mainContent.style.flex = '1';
+    mainContent.style.display = 'flex';
+    mainContent.style.flexDirection = 'column';
+    mainContent.style.justifyContent = 'center';
+    
     // 天気に応じた絵文字を表示
     const weatherEmoji = document.createElement('div');
-    weatherEmoji.style.fontSize = isSlide ? '70px' : '50px';
-    weatherEmoji.style.margin = isSlide ? '20px 0' : '15px 0';
+    weatherEmoji.style.fontSize = isSlide ? '60px' : '50px';
+    weatherEmoji.style.margin = '10px 0';
     weatherEmoji.style.textShadow = '0 3px 10px rgba(0,0,0,0.1)';
     
     // 天気に応じた絵文字を設定
@@ -761,16 +785,16 @@ function createDayCard(dayData, mode) {
         weatherEmoji.textContent = '🌈';
     }
     
-    dayCard.appendChild(weatherEmoji);
+    mainContent.appendChild(weatherEmoji);
     
     // 天気の説明
     const weatherDiv = document.createElement('div');
     weatherDiv.textContent = mainWeather || '天気データなし';
-    weatherDiv.style.fontSize = isSlide ? '22px' : '16px';
+    weatherDiv.style.fontSize = isSlide ? '18px' : '16px';
     weatherDiv.style.fontWeight = '500';
     weatherDiv.style.color = '#4CAF50';
-    weatherDiv.style.margin = isSlide ? '0 0 20px 0' : '0 0 15px 0';
-    dayCard.appendChild(weatherDiv);
+    weatherDiv.style.margin = '0 0 15px 0';
+    mainContent.appendChild(weatherDiv);
     
     // 最高・最低気温
     const temps = dayData.temps;
@@ -786,15 +810,15 @@ function createDayCard(dayData, mode) {
             tempDiv.style.justifyContent = 'center';
             tempDiv.style.alignItems = 'center';
             tempDiv.style.gap = '20px';
-            tempDiv.style.margin = '15px 0';
+            tempDiv.style.margin = '10px 0';
             
             const maxTempDiv = document.createElement('div');
             maxTempDiv.innerHTML = `<div style="font-size: 14px; color: #757575; margin-bottom: 5px;">最高</div>
-                                   <div style="font-size: 28px; color: #FF5722; font-weight: bold;">${maxTemp.toFixed(1)}°C</div>`;
+                                   <div style="font-size: 24px; color: #FF5722; font-weight: bold;">${maxTemp.toFixed(1)}°C</div>`;
             
             const minTempDiv = document.createElement('div');
             minTempDiv.innerHTML = `<div style="font-size: 14px; color: #757575; margin-bottom: 5px;">最低</div>
-                                   <div style="font-size: 28px; color: #2196F3; font-weight: bold;">${minTemp.toFixed(1)}°C</div>`;
+                                   <div style="font-size: 24px; color: #2196F3; font-weight: bold;">${minTemp.toFixed(1)}°C</div>`;
             
             tempDiv.appendChild(maxTempDiv);
             tempDiv.appendChild(minTempDiv);
@@ -806,19 +830,21 @@ function createDayCard(dayData, mode) {
                                <span style="color: #2196F3; font-weight: bold; font-size: 18px;">${minTemp.toFixed(1)}°C</span>`;
         }
         
-        dayCard.appendChild(tempDiv);
+        mainContent.appendChild(tempDiv);
     } else {
         const tempDiv = document.createElement('div');
         tempDiv.textContent = '気温データなし';
         tempDiv.style.color = '#757575';
-        tempDiv.style.margin = '15px 0';
-        dayCard.appendChild(tempDiv);
+        tempDiv.style.margin = '10px 0';
+        mainContent.appendChild(tempDiv);
     }
+    
+    dayCard.appendChild(mainContent);
     
     // 詳細情報エリア
     const detailsContainer = document.createElement('div');
-    detailsContainer.style.marginTop = isSlide ? '20px' : '15px';
-    detailsContainer.style.padding = isSlide ? '15px 10px 5px' : '10px 5px 5px';
+    detailsContainer.style.marginTop = 'auto'; // 下部に配置
+    detailsContainer.style.padding = '10px 5px 0';
     detailsContainer.style.borderTop = '1px dashed #E8F5E9';
     detailsContainer.style.display = 'flex';
     detailsContainer.style.justifyContent = 'space-around';
@@ -828,8 +854,8 @@ function createDayCard(dayData, mode) {
         const avgHumidity = dayData.humidity.reduce((sum, val) => sum + val, 0) / dayData.humidity.length;
         const humidityDiv = document.createElement('div');
         humidityDiv.style.textAlign = 'center';
-        const fontSize = isSlide ? '14px' : '12px';
-        const valueFontSize = isSlide ? '18px' : '14px';
+        const fontSize = isSlide ? '13px' : '12px';
+        const valueFontSize = isSlide ? '16px' : '14px';
         humidityDiv.innerHTML = `<div style="color: #757575; font-size: ${fontSize};">湿度</div>
                                <div style="color: #1976D2; font-weight: 500; font-size: ${valueFontSize};">${Math.round(avgHumidity)}%</div>`;
         detailsContainer.appendChild(humidityDiv);
@@ -840,8 +866,8 @@ function createDayCard(dayData, mode) {
         const avgWind = dayData.wind.reduce((sum, val) => sum + val, 0) / dayData.wind.length;
         const windDiv = document.createElement('div');
         windDiv.style.textAlign = 'center';
-        const fontSize = isSlide ? '14px' : '12px';
-        const valueFontSize = isSlide ? '18px' : '14px';
+        const fontSize = isSlide ? '13px' : '12px';
+        const valueFontSize = isSlide ? '16px' : '14px';
         windDiv.innerHTML = `<div style="color: #757575; font-size: ${fontSize};">風速</div>
                            <div style="color: #43A047; font-weight: 500; font-size: ${valueFontSize};">${avgWind.toFixed(1)}m/s</div>`;
         detailsContainer.appendChild(windDiv);
@@ -852,8 +878,8 @@ function createDayCard(dayData, mode) {
         const avgPressure = dayData.pressure.reduce((sum, val) => sum + val, 0) / dayData.pressure.length;
         const pressureDiv = document.createElement('div');
         pressureDiv.style.textAlign = 'center';
-        const fontSize = isSlide ? '14px' : '12px';
-        const valueFontSize = isSlide ? '18px' : '14px';
+        const fontSize = isSlide ? '13px' : '12px';
+        const valueFontSize = isSlide ? '16px' : '14px';
         pressureDiv.innerHTML = `<div style="color: #757575; font-size: ${fontSize};">気圧</div>
                                <div style="color: #7B1FA2; font-weight: 500; font-size: ${valueFontSize};">${Math.round(avgPressure)}hPa</div>`;
         detailsContainer.appendChild(pressureDiv);
