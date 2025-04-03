@@ -839,53 +839,120 @@ function createDayCard(dayData, mode) {
         mainContent.appendChild(tempDiv);
     }
     
+    // スマホ版スライドの場合は詳細情報も追加
+    if (isSlide) {
+        // 詳細情報テーブルの作成
+        const detailsTable = document.createElement('div');
+        detailsTable.style.width = '100%';
+        detailsTable.style.marginTop = '20px';
+        detailsTable.style.padding = '10px 0 0';
+        detailsTable.style.borderTop = '1px dashed #E8F5E9';
+        
+        // 詳細情報グリッド
+        const detailsGrid = document.createElement('div');
+        detailsGrid.style.display = 'grid';
+        detailsGrid.style.gridTemplateColumns = 'repeat(3, 1fr)';
+        detailsGrid.style.gap = '10px';
+        detailsGrid.style.width = '100%';
+        
+        // データ項目
+        const detailItems = [];
+        
+        // 湿度の表示（平均値）
+        if (dayData.humidity && dayData.humidity.length > 0) {
+            const avgHumidity = dayData.humidity.reduce((sum, val) => sum + val, 0) / dayData.humidity.length;
+            detailItems.push({
+                label: '湿度',
+                value: `${Math.round(avgHumidity)}%`,
+                color: '#1976D2'
+            });
+        }
+        
+        // 風速の表示（平均値）
+        if (dayData.wind && dayData.wind.length > 0) {
+            const avgWind = dayData.wind.reduce((sum, val) => sum + val, 0) / dayData.wind.length;
+            detailItems.push({
+                label: '風速',
+                value: `${avgWind.toFixed(1)}m/s`,
+                color: '#43A047'
+            });
+        }
+        
+        // 気圧の表示（平均値）
+        if (dayData.pressure && dayData.pressure.length > 0) {
+            const avgPressure = dayData.pressure.reduce((sum, val) => sum + val, 0) / dayData.pressure.length;
+            detailItems.push({
+                label: '気圧',
+                value: `${Math.round(avgPressure)}hPa`,
+                color: '#7B1FA2'
+            });
+        }
+        
+        // 詳細項目を追加
+        detailItems.forEach(item => {
+            const itemDiv = document.createElement('div');
+            itemDiv.style.textAlign = 'center';
+            itemDiv.innerHTML = `
+                <div style="color: #757575; font-size: 13px;">${item.label}</div>
+                <div style="color: ${item.color}; font-weight: 500; font-size: 16px;">${item.value}</div>
+            `;
+            detailsGrid.appendChild(itemDiv);
+        });
+        
+        detailsTable.appendChild(detailsGrid);
+        mainContent.appendChild(detailsTable);
+    }
+    
     dayCard.appendChild(mainContent);
     
-    // 詳細情報エリア
-    const detailsContainer = document.createElement('div');
-    detailsContainer.style.marginTop = 'auto'; // 下部に配置
-    detailsContainer.style.padding = '10px 5px 0';
-    detailsContainer.style.borderTop = '1px dashed #E8F5E9';
-    detailsContainer.style.display = 'flex';
-    detailsContainer.style.justifyContent = 'space-around';
-    
-    // 湿度の表示（平均値）
-    if (dayData.humidity && dayData.humidity.length > 0) {
-        const avgHumidity = dayData.humidity.reduce((sum, val) => sum + val, 0) / dayData.humidity.length;
-        const humidityDiv = document.createElement('div');
-        humidityDiv.style.textAlign = 'center';
-        const fontSize = isSlide ? '13px' : '12px';
-        const valueFontSize = isSlide ? '16px' : '14px';
-        humidityDiv.innerHTML = `<div style="color: #757575; font-size: ${fontSize};">湿度</div>
-                               <div style="color: #1976D2; font-weight: 500; font-size: ${valueFontSize};">${Math.round(avgHumidity)}%</div>`;
-        detailsContainer.appendChild(humidityDiv);
+    // PCサイズ用の詳細情報エリア（スライドショーでない場合のみ）
+    if (!isSlide) {
+        const detailsContainer = document.createElement('div');
+        detailsContainer.style.marginTop = 'auto'; // 下部に配置
+        detailsContainer.style.padding = '10px 5px 0';
+        detailsContainer.style.borderTop = '1px dashed #E8F5E9';
+        detailsContainer.style.display = 'flex';
+        detailsContainer.style.justifyContent = 'space-around';
+        
+        // 湿度の表示（平均値）
+        if (dayData.humidity && dayData.humidity.length > 0) {
+            const avgHumidity = dayData.humidity.reduce((sum, val) => sum + val, 0) / dayData.humidity.length;
+            const humidityDiv = document.createElement('div');
+            humidityDiv.style.textAlign = 'center';
+            const fontSize = '12px';
+            const valueFontSize = '14px';
+            humidityDiv.innerHTML = `<div style="color: #757575; font-size: ${fontSize};">湿度</div>
+                                   <div style="color: #1976D2; font-weight: 500; font-size: ${valueFontSize};">${Math.round(avgHumidity)}%</div>`;
+            detailsContainer.appendChild(humidityDiv);
+        }
+        
+        // 風速の表示（平均値）
+        if (dayData.wind && dayData.wind.length > 0) {
+            const avgWind = dayData.wind.reduce((sum, val) => sum + val, 0) / dayData.wind.length;
+            const windDiv = document.createElement('div');
+            windDiv.style.textAlign = 'center';
+            const fontSize = '12px';
+            const valueFontSize = '14px';
+            windDiv.innerHTML = `<div style="color: #757575; font-size: ${fontSize};">風速</div>
+                               <div style="color: #43A047; font-weight: 500; font-size: ${valueFontSize};">${avgWind.toFixed(1)}m/s</div>`;
+            detailsContainer.appendChild(windDiv);
+        }
+        
+        // 気圧の表示（平均値）
+        if (dayData.pressure && dayData.pressure.length > 0) {
+            const avgPressure = dayData.pressure.reduce((sum, val) => sum + val, 0) / dayData.pressure.length;
+            const pressureDiv = document.createElement('div');
+            pressureDiv.style.textAlign = 'center';
+            const fontSize = '12px';
+            const valueFontSize = '14px';
+            pressureDiv.innerHTML = `<div style="color: #757575; font-size: ${fontSize};">気圧</div>
+                                   <div style="color: #7B1FA2; font-weight: 500; font-size: ${valueFontSize};">${Math.round(avgPressure)}hPa</div>`;
+            detailsContainer.appendChild(pressureDiv);
+        }
+        
+        dayCard.appendChild(detailsContainer);
     }
     
-    // 風速の表示（平均値）
-    if (dayData.wind && dayData.wind.length > 0) {
-        const avgWind = dayData.wind.reduce((sum, val) => sum + val, 0) / dayData.wind.length;
-        const windDiv = document.createElement('div');
-        windDiv.style.textAlign = 'center';
-        const fontSize = isSlide ? '13px' : '12px';
-        const valueFontSize = isSlide ? '16px' : '14px';
-        windDiv.innerHTML = `<div style="color: #757575; font-size: ${fontSize};">風速</div>
-                           <div style="color: #43A047; font-weight: 500; font-size: ${valueFontSize};">${avgWind.toFixed(1)}m/s</div>`;
-        detailsContainer.appendChild(windDiv);
-    }
-    
-    // 気圧の表示（平均値）
-    if (dayData.pressure && dayData.pressure.length > 0) {
-        const avgPressure = dayData.pressure.reduce((sum, val) => sum + val, 0) / dayData.pressure.length;
-        const pressureDiv = document.createElement('div');
-        pressureDiv.style.textAlign = 'center';
-        const fontSize = isSlide ? '13px' : '12px';
-        const valueFontSize = isSlide ? '16px' : '14px';
-        pressureDiv.innerHTML = `<div style="color: #757575; font-size: ${fontSize};">気圧</div>
-                               <div style="color: #7B1FA2; font-weight: 500; font-size: ${valueFontSize};">${Math.round(avgPressure)}hPa</div>`;
-        detailsContainer.appendChild(pressureDiv);
-    }
-    
-    dayCard.appendChild(detailsContainer);
     return dayCard;
 }
 
