@@ -62,6 +62,9 @@ function translateWeather(englishWeather) {
 
 // ページ読み込み時に実行
 document.addEventListener('DOMContentLoaded', () => {
+    // 全体のスタイルを適用
+    applyGlobalStyles();
+    
     fetchAgroInfo();
     fetchWeeklyForecast();
 });
@@ -125,6 +128,118 @@ async function fetchWeeklyForecast() {
     }
 }
 
+// グローバルスタイルを適用する関数
+function applyGlobalStyles() {
+    // コンテナのスタイリング
+    const container = document.getElementById('takasuHatakeCondition');
+    if (container) {
+        container.style.fontFamily = "'Helvetica Neue', Arial, sans-serif";
+        container.style.maxWidth = '100%';
+        container.style.margin = '0 auto';
+        container.style.padding = '20px';
+        container.style.backgroundColor = '#f8fff8'; // 薄い緑色の背景
+        container.style.borderRadius = '12px';
+        container.style.boxShadow = '0 6px 25px rgba(105, 165, 120, 0.15)';
+        container.style.overflow = 'hidden';
+    }
+    
+    // タイトルスタイルの改善
+    const title = document.querySelector('h2');
+    if (title) {
+        title.style.borderBottom = '2px solid #4CAF50';
+        title.style.paddingBottom = '10px';
+        title.style.color = '#2E7D32'; // 深い緑色
+        title.style.fontWeight = '600';
+        title.style.marginBottom = '20px';
+        title.style.fontSize = window.innerWidth < 600 ? '20px' : '24px'; // レスポンシブフォントサイズ
+    }
+    
+    // 画面サイズが変更されたときのイベントリスナー
+    window.addEventListener('resize', adjustLayoutForScreenSize);
+    
+    // 初期表示時にもレイアウトを調整
+    adjustLayoutForScreenSize();
+}
+
+// 画面サイズに応じてレイアウトを調整する関数
+function adjustLayoutForScreenSize() {
+    const container = document.getElementById('takasuHatakeCondition');
+    const isSmallScreen = window.innerWidth < 600;
+    
+    if (container) {
+        container.style.padding = isSmallScreen ? '15px 10px' : '20px';
+    }
+    
+    // テーブルのレスポンシブ対応
+    const table = document.getElementById('weather-table');
+    if (table) {
+        if (isSmallScreen) {
+            table.style.fontSize = '14px';
+            
+            // テーブルのセルにあるすべてのth, tdにスタイルを適用
+            const cells = table.querySelectorAll('th, td');
+            cells.forEach(cell => {
+                cell.style.padding = '10px';
+            });
+        } else {
+            table.style.fontSize = '16px';
+            
+            const cells = table.querySelectorAll('th, td');
+            cells.forEach(cell => {
+                cell.style.padding = '15px 20px';
+            });
+        }
+    }
+    
+    // 週間予報カードのレスポンシブ対応
+    const forecastContainer = document.querySelector('#weekly-forecast-section > div');
+    if (forecastContainer) {
+        // スマホでは1行2カードにする
+        forecastContainer.style.gap = isSmallScreen ? '10px' : '15px';
+        
+        const cards = forecastContainer.querySelectorAll('div');
+        cards.forEach(card => {
+            if (card.style.flex) { // カードの要素だけを選択
+                card.style.minWidth = isSmallScreen ? 'calc(50% - 5px)' : '130px';
+                card.style.maxWidth = isSmallScreen ? 'calc(50% - 5px)' : 'calc(100% / 3 - 15px)';
+                card.style.padding = isSmallScreen ? '10px' : '15px';
+                
+                // 天気絵文字のサイズ調整
+                const emoji = card.querySelector('div[style*="fontSize"]');
+                if (emoji) {
+                    emoji.style.fontSize = isSmallScreen ? '36px' : '45px';
+                    emoji.style.margin = isSmallScreen ? '8px 0' : '15px 0';
+                }
+                
+                // 日付ヘッダーのサイズ調整
+                const dateHeader = card.querySelector('h4');
+                if (dateHeader) {
+                    dateHeader.style.fontSize = isSmallScreen ? '14px' : '16px';
+                }
+                
+                // 温度表示のサイズ調整
+                const tempDiv = card.querySelector('div[style*="fontWeight: 600"]');
+                if (tempDiv) {
+                    tempDiv.style.fontSize = isSmallScreen ? '14px' : '16px';
+                }
+                
+                // 詳細情報のコンテナサイズ調整
+                const detailsContainer = card.querySelector('div[style*="borderTop"]');
+                if (detailsContainer) {
+                    detailsContainer.style.fontSize = isSmallScreen ? '11px' : '13px';
+                    detailsContainer.style.padding = isSmallScreen ? '8px 2px 2px' : '10px 5px 5px';
+                }
+            }
+        });
+    }
+    
+    // 週間予報のタイトルもレスポンシブに
+    const weeklyTitle = document.querySelector('#weekly-forecast-section > h3');
+    if (weeklyTitle) {
+        weeklyTitle.style.fontSize = isSmallScreen ? '18px' : '20px';
+    }
+}
+
 function showAgroInfo(AgroInfomations) {
     // 取得情報をテーブルで表示
     const container = document.getElementById('takasuHatakeCondition');
@@ -139,9 +254,18 @@ function showAgroInfo(AgroInfomations) {
     const table = document.createElement('table');
     table.id = 'weather-table';
     table.style.width = '100%';
-    table.style.borderCollapse = 'collapse';
+    table.style.borderCollapse = 'separate';
+    table.style.borderSpacing = '0';
     table.style.margin = '20px 0';
-    table.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.1)';
+    table.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.08)';
+    table.style.borderRadius = '10px';
+    table.style.overflow = 'hidden';
+    
+    // レスポンシブテーブル
+    const isSmallScreen = window.innerWidth < 600;
+    if (isSmallScreen) {
+        table.style.fontSize = '14px';
+    }
     
     // テーブルヘッダーの作成
     const thead = document.createElement('thead');
@@ -251,7 +375,7 @@ function showWeeklyForecast(forecastData) {
     forecastContainer.style.display = 'flex';
     forecastContainer.style.flexWrap = 'wrap';
     forecastContainer.style.justifyContent = 'space-between';
-    forecastContainer.style.gap = '10px';
+    forecastContainer.style.gap = isSmallScreen ? '10px' : '15px';
     forecastContainer.style.marginTop = '20px';
     
     // APIからの予報データを処理
@@ -379,19 +503,23 @@ function showWeeklyForecast(forecastData) {
         try {
             const dayCard = document.createElement('div');
             dayCard.style.flex = '1';
-            dayCard.style.minWidth = '120px';
-            dayCard.style.maxWidth = 'calc(100% / 3 - 10px)';
-            dayCard.style.backgroundColor = '#f9f9f9';
-            dayCard.style.borderRadius = '8px';
-            dayCard.style.padding = '10px';
-            dayCard.style.boxShadow = '0 2px 5px rgba(0,0,0,0.1)';
+            // スマホ画面では2カラムになるよう調整
+            const isSmallScreen = window.innerWidth < 600;
+            dayCard.style.minWidth = isSmallScreen ? 'calc(50% - 5px)' : '130px';
+            dayCard.style.maxWidth = isSmallScreen ? 'calc(50% - 5px)' : 'calc(100% / 3 - 15px)';
+            dayCard.style.backgroundColor = 'white';
+            dayCard.style.borderRadius = '12px';
+            dayCard.style.padding = isSmallScreen ? '10px' : '15px';
+            dayCard.style.boxShadow = '0 4px 15px rgba(76, 175, 80, 0.1)';
             dayCard.style.textAlign = 'center';
+            dayCard.style.transition = 'transform 0.3s ease, box-shadow 0.3s ease';
             
             // 曜日
             const weekday = dayData.date.toLocaleDateString('ja-JP', { weekday: 'short' });
             const dateHeader = document.createElement('h4');
             dateHeader.textContent = `${dayData.date.getMonth() + 1}/${dayData.date.getDate()} (${weekday})`;
             dateHeader.style.margin = '5px 0';
+            dateHeader.style.fontSize = isSmallScreen ? '14px' : '16px'; 
             dayCard.appendChild(dateHeader);
             
             // 主な天気（最も頻度の高い天気を表示）
@@ -409,10 +537,11 @@ function showWeeklyForecast(forecastData) {
                 }
             }
             
-            // 天気に応じた絵文字を表示
+            // 天気に応じた絵文字を表示 - スマホではやや小さく
             const weatherEmoji = document.createElement('div');
-            weatherEmoji.style.fontSize = '40px';
-            weatherEmoji.style.margin = '10px 0';
+            weatherEmoji.style.fontSize = isSmallScreen ? '36px' : '45px';
+            weatherEmoji.style.margin = isSmallScreen ? '8px 0' : '15px 0';
+            weatherEmoji.style.textShadow = '0 2px 5px rgba(0,0,0,0.1)';
             
             // 天気に応じた絵文字を設定
             if (mainWeather === '快晴') {
@@ -443,6 +572,7 @@ function showWeeklyForecast(forecastData) {
                 
                 const tempDiv = document.createElement('div');
                 tempDiv.innerHTML = `<span style="color: #FF5722; font-weight: bold;">${maxTemp.toFixed(1)}°C</span> / <span style="color: #2196F3; font-weight: bold;">${minTemp.toFixed(1)}°C</span>`;
+                tempDiv.style.fontSize = isSmallScreen ? '14px' : '16px';
                 dayCard.appendChild(tempDiv);
             } else {
                 const tempDiv = document.createElement('div');
@@ -487,6 +617,9 @@ function showWeeklyForecast(forecastData) {
             console.error('日ごとの予報カード作成中にエラーが発生しました:', err, dayData);
         }
     });
+    
+    // レイアウトが完了したら、サイズ変更に対応するために調整関数を呼び出す
+    adjustLayoutForScreenSize();
     
     forecastSection.appendChild(forecastContainer);
     container.appendChild(forecastSection);
